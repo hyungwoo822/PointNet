@@ -20,17 +20,26 @@ def step(points, labels, model):
     """
     
     # TODO : Implement step function for classification.
+    points = points.to(device)
+    labels = labels.to(device)
 
-    loss = None
-    preds = None
-    return loss, preds
+    # Forward
+    preds = model(points)  # [B, num_classes]
 
+    # Cross entropy loss
+    loss = F.cross_entropy(preds, labels)
+    pred_labels = preds.argmax(dim=1)
+    return loss, pred_labels
 
 def train_step(points, labels, model, optimizer, train_acc_metric):
     loss, preds = step(points, labels, model)
     train_batch_acc = train_acc_metric(preds, labels.to(device))
 
     # TODO : Implement backpropagation using optimizer and loss
+
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
 
     return loss, train_batch_acc
 
@@ -143,9 +152,10 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", type=int, default=100)
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--gpu", type=int, default=2)
 
     args = parser.parse_args()
-    args.gpu = 0
+    args.gpu = 2
     args.save = True
 
     main(args)

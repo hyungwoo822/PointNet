@@ -39,7 +39,12 @@ def train_step(points, pc_labels, class_labels, model, optimizer, train_acc_metr
     train_batch_acc = train_acc_metric(preds, pc_labels.to(device))
 
     # TODO : Implement backpropagation using optimizer and loss
+    loss, preds = step(points, labels, model)
+    train_batch_acc = train_acc_metric(preds, labels.to(device))
 
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
     return loss, train_batch_acc
 
 
