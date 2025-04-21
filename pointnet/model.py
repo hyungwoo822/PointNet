@@ -141,7 +141,7 @@ class PointNetPartSeg(nn.Module):
                                   nn.Conv1d(64, 64, 1) ,nn.BatchNorm1d(64), nn.ReLU())
         self.mlp2 = nn.Sequential(nn.Conv1d(64, 128, 1) ,nn.BatchNorm1d(128),nn.ReLU(),\
                                 nn.Conv1d(128, 1024, 1) ,nn.BatchNorm1d(1024))
-        self.ouput1 = nn.Sequential(nn.Conv1d(1088, 512, 1) ,nn.BatchNorm1d(512),nn.ReLU(),\
+        self.output1 = nn.Sequential(nn.Conv1d(1088, 512, 1) ,nn.BatchNorm1d(512),nn.ReLU(),\
                                     nn.Conv1d(512, 256, 1) ,nn.BatchNorm1d(256),nn.ReLU(),\
                                     nn.Conv1d(256, 128, 1) ,nn.BatchNorm1d(128),nn.ReLU())
         self.output2 = nn.Sequential(nn.Conv1d(128, 128, 1) ,nn.BatchNorm1d(128),nn.ReLU(),\
@@ -171,7 +171,7 @@ class PointNetPartSeg(nn.Module):
         global_feature = torch.max(feature4, 2)[0]
         gloabl_feature = global_feature.unsqueeze(2).repeat(1, 1, N)
 
-        feature = torch.cat(local_feature, gloabl_feature, dim=1)
+        feature = torch.cat((local_feature, gloabl_feature), dim=1)
 
         pnt_feat = self.output1(feature)
         result = self.output2(pnt_feat)
@@ -182,15 +182,16 @@ class PointNetPartSeg(nn.Module):
 class PointNetAutoEncoder(nn.Module):
     def __init__(self, num_points):
         super().__init__()
-        self.pointnet_feat = PointNetFeat()
+        self.pointnet_feat = PointNetFeat(input_transform=True, feature_transform=True)
 
         # Decoder is just a simple MLP that outputs N x 3 (x,y,z) coordinates.
         # TODO : Implement decoder.
         self.num_points = num_points
-        self.ae_layer = nn.Sequential(nn.Linear(1024, self.num_points // 4), nn.BatchNorm1d(self.num_points // 4),nn.ReLU(),\
-                                    nn.Linear(self.num_points // 4, self.num_points // 2), nn.BatchNorm1d(self.num_points // 2),nn.ReLU(),\
-                                    nn.Linear(self.num_points // 2, self.num_points), nn.Dropout(0.1), nn.BatchNorm1d(self.num_points),nn.ReLU(),\
-                                    nn.Linear(64, 128, 1))
+        self.ae_layer1 = nn.Sequential(nn.Linear(1024, self.num_points // 4), nn.BatchNorm1d(self.num_points // 4),nn.ReLU())
+        self.ae_layer2 = nn.Sequential(nn.Linear(self.num_points // 4, self.num_points // 2), nn.BatchNorm1d(self.num_points // 2),nn.ReLU())
+        self.ae_layer3 = nn.Sequential(nn.Linear(self.num_points // 2, self.num_points), nn.Dropout(0.1), nn.BatchNorm1d(self.num_points),nn.ReLU(),\
+                                    nn.Linear(self.num_points, self.num_points * 3, 1))                                    
+                                    
 
     def forward(self, pointcloud):
         """
@@ -202,10 +203,10 @@ class PointNetAutoEncoder(nn.Module):
         """
         # TODO : Implement forward function.
         B, N, _ = pointcloud.shape
-        pointcloud = pointcloud.transpose(1, 2)
-        logits = self.pointnet_feat(pointcloud)
-        logits = logits.unsqueeze(-2)
-        result = self.ae_layer(logits)
+        logits = self.pointnet_feat(pointcloud) # [B, N]
+        result = self.ae_layer1(logits)
+        result = self.ae_layer2(result)
+        result = self.ae_layer3(result)
         return result.reshape(B, self.num_points, 3)
 
 def get_orthogonal_loss(feat_trans, reg_weight=1e-3):

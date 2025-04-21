@@ -23,9 +23,12 @@ def step(points, model):
     # TODO : Implement step function for AutoEncoder. 
     # Hint : Use chamferDist defined in above
     # Hint : You can compute chamfer distance between two point cloud pc1 and pc2 by chamfer_distance(pc1, pc2)
-    
-    preds = None
-    loss = None
+    points = points.to(device)
+    model = model.to(device)
+
+    preds = model(points)
+    # chamfer distance output = tuple
+    loss, _ = chamfer_distance(preds, points) # or chamfer_distnace(preds, points)[0]
 
     return loss, preds
 
@@ -125,7 +128,7 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=1e-3)
 
     args = parser.parse_args()
-    args.gpu = 0
+    args.gpu = 2
     args.save = True
 
     main(args)

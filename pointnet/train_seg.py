@@ -25,10 +25,14 @@ def step(points, pc_labels, class_labels, model):
     """
     
     # TODO : Implement step function for segmentation.
+    points = points.to(device)
+    pc_labels = pc_labels.to(device)
+    class_labels = class_labels.to(device)
+    model = model.to(device)
 
-    loss = None
-    logits = None
-    preds = None
+    logits = model(points) # [B, C, N]
+    loss = F.cross_entropy(logits, pc_labels) # [B, N]
+    preds = logits.argmax(dim=1)
     return loss, logits, preds
 
 
@@ -39,9 +43,6 @@ def train_step(points, pc_labels, class_labels, model, optimizer, train_acc_metr
     train_batch_acc = train_acc_metric(preds, pc_labels.to(device))
 
     # TODO : Implement backpropagation using optimizer and loss
-    loss, preds = step(points, labels, model)
-    train_batch_acc = train_acc_metric(preds, labels.to(device))
-
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
@@ -166,7 +167,7 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=1e-3)
 
     args = parser.parse_args()
-    args.gpu = 0
+    args.gpu = 3
     args.save = True
 
     main(args)
